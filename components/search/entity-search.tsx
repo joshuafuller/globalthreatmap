@@ -160,42 +160,35 @@ export function EntitySearch() {
     setDeepResearchProgress(null);
     setDeepResearchError(null);
 
-    if (showDeepResearch) {
-      // Deep research mode: use DeepResearch API only
-      try {
-        const response = await fetch("/api/deepresearch", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ topic: query, accessToken }),
-        });
-        const data = await response.json();
+    // Always get quick answer first
+    const quickAnswerPromise = searchEntity(query, false);
 
-        if (data.error) {
-          setDeepResearchError(data.error);
-        } else if (data.taskId) {
-          setDeepResearchTaskId(data.taskId);
-          // Set a placeholder entity while research runs
-          setEntity({
-            id: `entity_${Date.now()}`,
-            name: query,
-            type: "group",
-            description: "",
-            locations: [],
-            relatedEntities: [],
-            economicData: {},
-          });
-        }
-      } catch (err) {
-        setDeepResearchError("Failed to start deep research");
-      }
-    } else {
-      // Quick mode: use Answer API for basic entity info
-      const result = await searchEntity(query, false);
-      if (result) {
-        setEntity(result.entity);
-        if (result.entity.locations && result.entity.locations.length > 0) {
-          setEntityLocations(result.entity.name, result.entity.locations);
-        }
+    // If deep research is enabled, start it in parallel
+    if (showDeepResearch) {
+      fetch("/api/deepresearch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: query, accessToken }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.error) {
+            setDeepResearchError(data.error);
+          } else if (data.taskId) {
+            setDeepResearchTaskId(data.taskId);
+          }
+        })
+        .catch(() => {
+          setDeepResearchError("Failed to start deep research");
+        });
+    }
+
+    // Wait for quick answer
+    const result = await quickAnswerPromise;
+    if (result) {
+      setEntity(result.entity);
+      if (result.entity.locations && result.entity.locations.length > 0) {
+        setEntityLocations(result.entity.name, result.entity.locations);
       }
     }
   };
@@ -337,9 +330,16 @@ export function EntitySearch() {
             <CardContent className="space-y-4">
               {entity.description && (
                 <div>
-                  <h4 className="mb-1 text-sm font-medium text-foreground">
-                    Overview
-                  </h4>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="text-sm font-medium text-foreground">
+                      {isDeepResearchLoading ? "Quick Answer" : "Overview"}
+                    </h4>
+                    {isDeepResearchLoading && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                        Full report loading...
+                      </Badge>
+                    )}
+                  </div>
                   <div className="text-sm text-muted-foreground">
                     <Markdown content={entity.description} />
                   </div>
