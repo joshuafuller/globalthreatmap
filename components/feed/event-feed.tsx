@@ -7,7 +7,7 @@ import { FeedFilters } from "./feed-filters";
 import { Loader2 } from "lucide-react";
 
 export function EventFeed() {
-  const { filteredEvents, isLoading, error, selectedEvent, selectEvent } =
+  const { filteredEvents, isLoading, error, selectedEvent,  selectEvent } =
     useEventsStore();
 
   return (

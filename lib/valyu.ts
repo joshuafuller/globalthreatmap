@@ -77,11 +77,105 @@ export async function searchEvents(
   }
 }
 
+type EntityType = "organization" | "person" | "country" | "group";
+
+const COUNTRIES = new Set([
+  "afghanistan", "albania", "algeria", "andorra", "angola", "argentina", "armenia",
+  "australia", "austria", "azerbaijan", "bahamas", "bahrain", "bangladesh", "barbados",
+  "belarus", "belgium", "belize", "benin", "bhutan", "bolivia", "bosnia", "botswana",
+  "brazil", "brunei", "bulgaria", "burkina faso", "burundi", "cambodia", "cameroon",
+  "canada", "cape verde", "central african republic", "chad", "chile", "china",
+  "colombia", "comoros", "congo", "costa rica", "croatia", "cuba", "cyprus",
+  "czech republic", "czechia", "denmark", "djibouti", "dominica", "dominican republic",
+  "ecuador", "egypt", "el salvador", "equatorial guinea", "eritrea", "estonia",
+  "eswatini", "ethiopia", "fiji", "finland", "france", "gabon", "gambia", "georgia",
+  "germany", "ghana", "greece", "grenada", "guatemala", "guinea", "guinea-bissau",
+  "guyana", "haiti", "honduras", "hungary", "iceland", "india", "indonesia", "iran",
+  "iraq", "ireland", "israel", "italy", "ivory coast", "jamaica", "japan", "jordan",
+  "kazakhstan", "kenya", "kiribati", "north korea", "south korea", "korea", "kosovo",
+  "kuwait", "kyrgyzstan", "laos", "latvia", "lebanon", "lesotho", "liberia", "libya",
+  "liechtenstein", "lithuania", "luxembourg", "madagascar", "malawi", "malaysia",
+  "maldives", "mali", "malta", "marshall islands", "mauritania", "mauritius", "mexico",
+  "micronesia", "moldova", "monaco", "mongolia", "montenegro", "morocco", "mozambique",
+  "myanmar", "namibia", "nauru", "nepal", "netherlands", "new zealand", "nicaragua",
+  "niger", "nigeria", "north macedonia", "norway", "oman", "pakistan", "palau",
+  "palestine", "panama", "papua new guinea", "paraguay", "peru", "philippines", "poland",
+  "portugal", "qatar", "romania", "russia", "rwanda", "saint kitts", "saint lucia",
+  "saint vincent", "samoa", "san marino", "saudi arabia", "senegal", "serbia",
+  "seychelles", "sierra leone", "singapore", "slovakia", "slovenia", "solomon islands",
+  "somalia", "south africa", "south sudan", "spain", "sri lanka", "sudan", "suriname",
+  "sweden", "switzerland", "syria", "taiwan", "tajikistan", "tanzania", "thailand",
+  "timor-leste", "togo", "tonga", "trinidad", "tunisia", "turkey", "turkmenistan",
+  "tuvalu", "uganda", "ukraine", "united arab emirates", "uae", "united kingdom", "uk",
+  "united states", "usa", "us", "america", "uruguay", "uzbekistan", "vanuatu",
+  "vatican", "venezuela", "vietnam", "yemen", "zambia", "zimbabwe",
+]);
+
+function classifyEntityType(name: string, content: string): EntityType {
+  const lowerName = name.toLowerCase().trim();
+  const lowerContent = content.toLowerCase();
+
+  // Check if it's a country
+  if (COUNTRIES.has(lowerName)) {
+    return "country";
+  }
+
+  // Check content for country indicators
+  const countryIndicators = [
+    "sovereign nation", "republic of", "kingdom of", "nation state",
+    "government of", "country located", "bordered by", "capital city",
+    "national anthem", "head of state", "prime minister of", "president of the country",
+  ];
+  const countryScore = countryIndicators.filter(ind => lowerContent.includes(ind)).length;
+
+  // Check for group/tribe indicators
+  const groupIndicators = [
+    "ethnic group", "tribe", "tribal", "indigenous", "clan", "community",
+    "peoples", "militant group", "rebel group", "armed group", "terrorist organization",
+    "militia", "faction", "insurgent", "separatist", "guerrilla",
+  ];
+  const groupScore = groupIndicators.filter(ind => lowerContent.includes(ind)).length;
+
+  // Check for person indicators
+  const personIndicators = [
+    "was born", "born in", "died in", "biography", "personal life",
+    "early life", "career", "married", "children", "his ", "her ",
+    "he was", "she was", "politician", "leader", "ceo", "founder",
+    "president ", "minister ", "general ", "commander",
+  ];
+  const personScore = personIndicators.filter(ind => lowerContent.includes(ind)).length;
+
+  // Check for organization indicators
+  const orgIndicators = [
+    "company", "corporation", "founded in", "headquarters", "inc.", "ltd.",
+    "organization", "institution", "agency", "association", "foundation",
+    "ngo", "nonprofit", "enterprise", "business", "firm", "conglomerate",
+  ];
+  const orgScore = orgIndicators.filter(ind => lowerContent.includes(ind)).length;
+
+  // Determine type based on highest score
+  const scores = [
+    { type: "country" as EntityType, score: countryScore * 2 },
+    { type: "group" as EntityType, score: groupScore * 1.5 },
+    { type: "person" as EntityType, score: personScore },
+    { type: "organization" as EntityType, score: orgScore },
+  ];
+
+  scores.sort((a, b) => b.score - a.score);
+
+  // Return the type with highest score, default to organization if no clear winner
+  if (scores[0].score > 0) {
+    return scores[0].type;
+  }
+
+  return "organization";
+}
+
 export async function getEntityResearch(entityName: string) {
   try {
     const valyu = getValyuClient();
     const response = await valyu.search(
-      `${entityName} organization profile background`,
+      `${entityName} profile background information`,
       {
         searchType: "all",
         maxNumResults: 10,
@@ -96,10 +190,12 @@ export async function getEntityResearch(entityName: string) {
       .map((r) => (typeof r.content === "string" ? r.content : ""))
       .join("\n\n");
 
+    const entityType = classifyEntityType(entityName, combinedContent);
+
     return {
       name: entityName,
       description: combinedContent.slice(0, 1000),
-      type: "organization",
+      type: entityType,
       data: {
         sources: response.results.map((r) => ({
           title: r.title,

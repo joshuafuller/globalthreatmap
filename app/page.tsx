@@ -14,7 +14,7 @@ export default function Home() {
   const [showWelcome, setShowWelcome] = useState(false);
   const { isLoading, refresh } = useEvents({
     autoRefresh: true,
-    refreshInterval: 120000,
+    refreshInterval: 300000, // 5 minutes
   });
 
   useEffect(() => {

@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     const profile: EntityProfile = {
       id: `entity_${Date.now()}`,
       name: entityData.name,
-      type: "organization",
+      type: entityData.type as EntityProfile["type"],
       description: entityData.description,
       locations: [],
       relatedEntities: [],

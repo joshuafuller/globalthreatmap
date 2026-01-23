@@ -123,6 +123,13 @@ export const useEventsStore = create<EventsState>((set, get) => ({
       );
     }
 
+    // Sort by publication date (most recent first)
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.timestamp).getTime();
+      const dateB = new Date(b.timestamp).getTime();
+      return dateB - dateA;
+    });
+
     set({ filteredEvents: filtered });
   },
 

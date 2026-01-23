@@ -67,9 +67,16 @@ export async function GET(request: Request) {
         index === self.findIndex((e) => e.title === event.title)
     );
 
+    // Sort by publication date (most recent first)
+    const sortedEvents = uniqueEvents.sort((a, b) => {
+      const dateA = new Date(a.timestamp).getTime();
+      const dateB = new Date(b.timestamp).getTime();
+      return dateB - dateA;
+    });
+
     return NextResponse.json({
-      events: uniqueEvents,
-      count: uniqueEvents.length,
+      events: sortedEvents,
+      count: sortedEvents.length,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -137,9 +144,16 @@ export async function POST(request: Request) {
         index === self.findIndex((e) => e.title === event.title)
     );
 
+    // Sort by publication date (most recent first)
+    const sortedEvents = uniqueEvents.sort((a, b) => {
+      const dateA = new Date(a.timestamp).getTime();
+      const dateB = new Date(b.timestamp).getTime();
+      return dateB - dateA;
+    });
+
     return NextResponse.json({
-      events: uniqueEvents,
-      count: uniqueEvents.length,
+      events: sortedEvents,
+      count: sortedEvents.length,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
