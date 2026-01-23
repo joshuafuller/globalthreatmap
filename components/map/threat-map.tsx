@@ -14,9 +14,15 @@ import Map, {
 } from "react-map-gl/mapbox";
 import { useMapStore } from "@/stores/map-store";
 import { useEventsStore } from "@/stores/events-store";
+import { useAuthStore } from "@/stores/auth-store";
 import { threatLevelColors } from "@/types";
 import { EventPopup } from "./event-popup";
 import { CountryConflictsModal } from "./country-conflicts-modal";
+import { SignInModal } from "@/components/auth/sign-in-modal";
+
+const APP_MODE = process.env.NEXT_PUBLIC_APP_MODE || "self-hosted";
+const COUNTRY_CONFLICTS_LIMIT = 2;
+const COUNTRY_USAGE_KEY = "globalthreatmap_country_conflicts_usage";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -275,12 +281,38 @@ export function ThreatMap() {
     setMilitaryBasesLoading,
   } = useMapStore();
   const { filteredEvents, selectedEvent, selectEvent } = useEventsStore();
+  const { isAuthenticated } = useAuthStore();
   const [selectedEntityLocation, setSelectedEntityLocation] = useState<SelectedEntityLocation | null>(null);
   const [selectedMilitaryBase, setSelectedMilitaryBase] = useState<SelectedMilitaryBase | null>(null);
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null);
   const [isCountryLoading, setIsCountryLoading] = useState(false);
   const [blinkOpacity, setBlinkOpacity] = useState(0.4);
+  const [showSignInModal, setShowSignInModal] = useState(false);
+
+  // Check if auth is required (valyu mode)
+  const requiresAuth = APP_MODE === "valyu";
+
+  // Get current usage count from localStorage
+  const getUsageCount = useCallback(() => {
+    if (typeof window === "undefined") return 0;
+    const stored = localStorage.getItem(COUNTRY_USAGE_KEY);
+    return stored ? parseInt(stored, 10) : 0;
+  }, []);
+
+  // Increment usage count
+  const incrementUsageCount = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const current = getUsageCount();
+    localStorage.setItem(COUNTRY_USAGE_KEY, String(current + 1));
+  }, [getUsageCount]);
+
+  // Check if user has reached the limit
+  const hasReachedLimit = useCallback(() => {
+    if (!requiresAuth) return false;
+    if (isAuthenticated) return false;
+    return getUsageCount() >= COUNTRY_CONFLICTS_LIMIT;
+  }, [requiresAuth, isAuthenticated, getUsageCount]);
 
   // Fetch military bases on mount
   useEffect(() => {
@@ -466,6 +498,18 @@ export function ThreatMap() {
           const countryName = countryFeature.place_name;
           // Get ISO 3166-1 alpha-2 country code from short_code property
           const countryCode = countryFeature.properties?.short_code?.toUpperCase() || null;
+
+          // Check usage limit in valyu mode
+          if (hasReachedLimit()) {
+            setShowSignInModal(true);
+            return;
+          }
+
+          // Increment usage count for unauthenticated users in valyu mode
+          if (requiresAuth && !isAuthenticated) {
+            incrementUsageCount();
+          }
+
           setSelectedCountry(countryName);
           setSelectedCountryCode(countryCode);
           setIsCountryLoading(true);
@@ -474,7 +518,7 @@ export function ThreatMap() {
         console.error("Error reverse geocoding:", error);
       }
     },
-    [filteredEvents, selectEvent, viewport.zoom]
+    [filteredEvents, selectEvent, viewport.zoom, hasReachedLimit, requiresAuth, isAuthenticated, incrementUsageCount]
   );
 
   const handleMouseEnter = useCallback(() => {
@@ -773,6 +817,8 @@ export function ThreatMap() {
         onClose={handleCountryModalClose}
         onLoadingChange={handleCountryLoadingChange}
       />
+
+      <SignInModal open={showSignInModal} onOpenChange={setShowSignInModal} />
     </Map>
   );
 }

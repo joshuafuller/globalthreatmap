@@ -18,10 +18,15 @@ import {
   ExternalLink,
   MapPin,
   Navigation,
+  Lock,
 } from "lucide-react";
 import { useMapStore } from "@/stores/map-store";
+import { useAuthStore } from "@/stores/auth-store";
 import { Markdown } from "@/components/ui/markdown";
+import { SignInModal } from "@/components/auth/sign-in-modal";
 import type { EntityProfile } from "@/types";
+
+const APP_MODE = process.env.NEXT_PUBLIC_APP_MODE || "self-hosted";
 
 const typeIcons = {
   organization: Building2,
@@ -34,11 +39,22 @@ export function EntitySearch() {
   const [query, setQuery] = useState("");
   const [entity, setEntity] = useState<EntityProfile | null>(null);
   const [showDeepResearch, setShowDeepResearch] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
   const { isLoading, error, searchEntity } = useValyuSearch();
   const { flyTo, setEntityLocations, clearEntityLocations } = useMapStore();
+  const { isAuthenticated } = useAuthStore();
+
+  // Check if auth is required (valyu mode)
+  const requiresAuth = APP_MODE === "valyu";
 
   const handleSearch = async () => {
     if (!query.trim()) return;
+
+    // In valyu mode, require authentication for entity search
+    if (requiresAuth && !isAuthenticated) {
+      setShowSignInModal(true);
+      return;
+    }
 
     clearEntityLocations();
     const result = await searchEntity(query, showDeepResearch);
@@ -255,9 +271,17 @@ export function EntitySearch() {
             <p className="mt-4 text-sm text-muted-foreground">
               Search for an organization, person, country, or group
             </p>
+            {requiresAuth && !isAuthenticated && (
+              <div className="mt-4 flex items-center justify-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+                <Lock className="h-4 w-4" />
+                <span>Sign in required to search</span>
+              </div>
+            )}
           </div>
         )}
       </ScrollArea>
+
+      <SignInModal open={showSignInModal} onOpenChange={setShowSignInModal} />
     </div>
   );
 }

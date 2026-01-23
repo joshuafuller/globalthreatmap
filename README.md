@@ -70,6 +70,7 @@ npm install
 ```env
 NEXT_PUBLIC_MAPBOX_TOKEN=your_mapbox_token_here
 VALYU_API_KEY=your_valyu_api_key_here
+NEXT_PUBLIC_APP_MODE=self-hosted
 ```
 
 3. Get your API keys:
@@ -184,6 +185,86 @@ This app uses [Valyu](https://valyu.ai) for intelligence data:
 - **Deep Research** - Comprehensive entity analysis
 
 All Valyu queries exclude Wikipedia to ensure higher-quality source citations.
+
+## Authentication
+
+Global Threat Map supports two app modes controlled by the `NEXT_PUBLIC_APP_MODE` environment variable.
+
+### App Modes
+
+| Mode | Description |
+|------|-------------|
+| `self-hosted` | Default mode. No authentication required. All features are freely accessible. |
+| `valyu` | OAuth mode. Users sign in with Valyu to access premium features. |
+
+### Self-Hosted Mode (Default)
+
+In self-hosted mode, the app runs entirely with your own Valyu API key:
+
+```env
+NEXT_PUBLIC_APP_MODE=self-hosted
+VALYU_API_KEY=your_valyu_api_key_here
+```
+
+- No sign-in panel is displayed
+- All features are available to all users
+- API usage is billed to your Valyu account
+
+### Valyu OAuth Mode
+
+In valyu mode, users authenticate with their Valyu accounts:
+
+```env
+NEXT_PUBLIC_APP_MODE=valyu
+
+# OAuth Configuration (contact contact@valyu.ai for credentials)
+NEXT_PUBLIC_VALYU_AUTH_URL=https://auth.valyu.ai
+NEXT_PUBLIC_VALYU_CLIENT_ID=your-client-id
+VALYU_CLIENT_SECRET=your-client-secret
+VALYU_APP_URL=https://platform.valyu.ai
+NEXT_PUBLIC_REDIRECT_URI=http://localhost:3000/auth/valyu/callback
+```
+
+### Feature Gating (Valyu Mode)
+
+When running in valyu mode, certain features require authentication:
+
+| Feature | Unauthenticated | Authenticated |
+|---------|-----------------|---------------|
+| View map & events | ✅ Free | ✅ Free |
+| Event feed | ✅ Free | ✅ Free |
+| Country conflicts | ✅ 2 free lookups | ✅ Unlimited |
+| Entity search | ❌ Blocked | ✅ Unlimited |
+| Military bases | ✅ Free | ✅ Free |
+
+After users exhaust their free usage, a sign-in modal prompts them to authenticate with Valyu. New Valyu accounts receive **$10 in free credits**.
+
+### OAuth Flow
+
+The authentication uses OAuth 2.0 with PKCE (Proof Key for Code Exchange):
+
+1. User clicks "Sign in with Valyu"
+2. App generates PKCE code verifier and challenge
+3. User is redirected to Valyu's authorization page
+4. After authentication, Valyu redirects back to `/auth/valyu/callback`
+5. App exchanges authorization code for access token
+6. User info is stored in localStorage
+
+### Project Structure (Auth)
+
+```
+globalthreatmap/
+├── app/
+│   ├── api/oauth/token/       # Token exchange endpoint
+│   └── auth/valyu/callback/   # OAuth callback page
+├── components/auth/
+│   ├── sign-in-panel.tsx      # Floating auth panel
+│   └── sign-in-modal.tsx      # Sign-in dialog
+├── stores/
+│   └── auth-store.ts          # Auth state management
+└── lib/
+    └── oauth.ts               # PKCE utilities
+```
 
 ## License
 

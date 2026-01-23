@@ -37,7 +37,7 @@ const features: Feature[] = [
   },
   {
     icon: <Rss className="h-6 w-6" />,
-    title: "Real-Time Event Feed",
+    title: "Event Feed",
     description:
       "Browse live events in the sidebar. Filter by threat level, category, or search for specific incidents.",
     color: "text-orange-500",
@@ -98,8 +98,8 @@ export function WelcomeModal({ open, onOpenChange }: WelcomeModalProps) {
 
       <DialogContent className="max-h-[60vh]">
         <p className="mb-6 text-muted-foreground">
-          Your real-time situational awareness platform for tracking global
-          security events, geopolitical developments, and threat indicators.
+          Your situational awareness platform for tracking global
+          security events, wars, conflicts & threat indicators.
         </p>
 
         <div className="grid gap-4 sm:grid-cols-2">
