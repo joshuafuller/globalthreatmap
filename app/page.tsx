@@ -6,6 +6,7 @@ import { Header } from "@/components/header";
 import { Sidebar } from "@/components/sidebar";
 import { ThreatMap } from "@/components/map/threat-map";
 import { TimelineScrubber } from "@/components/map/timeline-scrubber";
+import { MapControls } from "@/components/map/map-controls";
 import { WelcomeModal } from "@/components/welcome-modal";
 import { SignInPanel, SignInModal } from "@/components/auth";
 import { PolymarketTicker, POLYMARKET_TICKER_HEIGHT } from "@/components/polymarket-ticker";
@@ -44,6 +45,7 @@ export default function Home() {
         <div className="relative flex-1">
           <ThreatMap />
           <TimelineScrubber />
+          <MapControls />
         </div>
         <Sidebar />
       </div>

@@ -35,7 +35,13 @@ const EventClassificationSchema = z.object({
     "Severity level: critical (imminent danger, mass casualties), high (significant threat), medium (developing situation), low (minor/contained), info (routine update)"
   ),
   primaryLocation: z.string().describe(
-    "The main geographic location (city, region, or country) where the event is occurring. Use proper names."
+    "The MOST SPECIFIC geographic location possible. Prioritize: exact address/landmark > neighborhood/district > city > region > country. Examples: 'Kharkiv, Ukraine' not 'Ukraine', 'Gaza City' not 'Gaza Strip', 'Port of Hodeidah, Yemen' not 'Yemen'."
+  ),
+  city: z.string().nullable().describe(
+    "The city or town name if identifiable, null otherwise"
+  ),
+  region: z.string().nullable().describe(
+    "The state, province, or region if identifiable, null otherwise"
   ),
   country: z.string().nullable().describe(
     "The country where the event is occurring, if identifiable"
@@ -87,7 +93,14 @@ Categories:
 - infrastructure: water reservoir levels, power grid, utilities, dams
 - commodities: grocery prices, food supply, commodity shortages
 
-Be precise with locations - use actual place names (cities, countries, regions).
+LOCATION EXTRACTION IS CRITICAL - be as granular as possible:
+- Always extract the most specific location mentioned (city > region > country)
+- Include the city name even for well-known locations (e.g., "Mariupol, Ukraine" not just "Ukraine")
+- For military/naval events, specify the base, port, or installation name
+- For maritime events, include coordinates or nearby port/coast if mentioned
+- Never use vague terms like "Middle East" or "Europe" when a specific country/city is mentioned
+- Examples of good locations: "Kramatorsk, Donetsk Oblast, Ukraine", "Bab el-Mandeb Strait", "Port of Aden, Yemen"
+
 For threat level:
 - critical: imminent danger, mass casualties, nuclear/WMD threats
 - high: significant active threats, major incidents, escalating situations
@@ -131,16 +144,30 @@ export async function classifyEvent(
   const aiResult = await classifyWithAI(title, content);
 
   if (aiResult) {
-    // AI classification succeeded - geocode the location
+    // AI classification succeeded - geocode the location with cascading specificity
     let location: GeoLocation | null = null;
 
-    if (aiResult.primaryLocation) {
-      location = await geocodeLocation(aiResult.primaryLocation);
+    // Try most specific first: city + region + country
+    if (aiResult.city && aiResult.country) {
+      const cityQuery = aiResult.region
+        ? `${aiResult.city}, ${aiResult.region}, ${aiResult.country}`
+        : `${aiResult.city}, ${aiResult.country}`;
+      location = await geocodeLocation(cityQuery);
+    }
 
-      // If AI's location couldn't be geocoded, try with country
-      if (!location && aiResult.country) {
-        location = await geocodeLocation(aiResult.country);
-      }
+    // Try the primary location string (should be most specific)
+    if (!location && aiResult.primaryLocation) {
+      location = await geocodeLocation(aiResult.primaryLocation);
+    }
+
+    // Try region + country
+    if (!location && aiResult.region && aiResult.country) {
+      location = await geocodeLocation(`${aiResult.region}, ${aiResult.country}`);
+    }
+
+    // Last resort: just country
+    if (!location && aiResult.country) {
+      location = await geocodeLocation(aiResult.country);
     }
 
     return {
