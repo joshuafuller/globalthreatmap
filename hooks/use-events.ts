@@ -63,7 +63,7 @@ export function useEvents(options: UseEventsOptions = {}) {
       // Handle auth errors - don't immediately sign out, just prompt re-auth
       if (response.status === 401 || data.requiresReauth) {
         setRequiresSignIn(true);
-        setError("Please sign in to view events.");
+        setError("Please wait 30 seconds and refresh.");
         return;
       }
 
