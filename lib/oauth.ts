@@ -56,12 +56,13 @@ export async function initiateOAuthFlow() {
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = await generateCodeChallenge(codeVerifier);
 
-  // Store code verifier in sessionStorage (needed for token exchange)
-  sessionStorage.setItem("oauth_code_verifier", codeVerifier);
+  // Store code verifier in localStorage (needed for token exchange)
+  // Using localStorage instead of sessionStorage to persist across tabs/redirects
+  localStorage.setItem("oauth_code_verifier", codeVerifier);
 
   // Generate random state for CSRF protection
   const state = generateCodeVerifier();
-  sessionStorage.setItem("oauth_state", state);
+  localStorage.setItem("oauth_state", state);
 
   // Build authorization URL
   const authUrl = new URL(

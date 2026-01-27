@@ -33,7 +33,7 @@ function OAuthCallbackContent() {
         return;
       }
 
-      const storedState = sessionStorage.getItem("oauth_state");
+      const storedState = localStorage.getItem("oauth_state");
       if (state !== storedState) {
         setStatus("error");
         setErrorMessage("Invalid state parameter. Possible CSRF attack.");
@@ -41,7 +41,7 @@ function OAuthCallbackContent() {
         return;
       }
 
-      const codeVerifier = sessionStorage.getItem("oauth_code_verifier");
+      const codeVerifier = localStorage.getItem("oauth_code_verifier");
       if (!codeVerifier) {
         setStatus("error");
         setErrorMessage("Code verifier not found. Please try again.");
@@ -63,8 +63,8 @@ function OAuthCallbackContent() {
 
         const { access_token, refresh_token, expires_in, user } = await tokenResponse.json();
 
-        sessionStorage.removeItem("oauth_code_verifier");
-        sessionStorage.removeItem("oauth_state");
+        localStorage.removeItem("oauth_code_verifier");
+        localStorage.removeItem("oauth_state");
 
         signIn(
           {
